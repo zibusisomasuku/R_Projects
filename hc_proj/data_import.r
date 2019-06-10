@@ -8,7 +8,6 @@ library(tidyverse)
 library(readr)
 library(dplyr)
 library(data.table)
-libary(sqldf)
 
 #Set file path from this file
 here()
@@ -57,8 +56,10 @@ rm (list = ls())
 #Load the first data set (based on values from the old system)
 set1 = read.csv("./output/pre2016data.csv")
 
-#Select only specific columns
-df_old = sqldf("select 'Plan Code' as plan_code,'Claim Number' as clm_num,'Member Number' as mem_num, 'Beneficiary Number' as ben_num,'Practice Type' as dis,'Date Received' as date_received,'Treatment Date' as treatment_date,'Process Date' as assessment_date,'Account Amount' as amount_claimed,'Paid Amount' as amount_paid from set1")
+#Select only specific columns and rename them
+df_old = select(set1,Plan.Code,Claim.Number,Member.Number,Beneficiary.Number,Practice.Type,Date.Received,Treatment.Date,Process.Date,Account.Amount,Paid.Amount)
+
+df_old = df_old %>% rename( plan_code = Plan.Code,clm_num = Claim.Number,mem_num = Member.Number,ben_num = Beneficiary.Number, dis = Practice.Type,received_date = Date.Received,treatment_date = Treatment.Date,assess_date = Process.Date,amount_claimed = Account.Amount,amount_paid = Paid.Amount)
 
 #Load the second data set (based on values from the new system)
 set2a = read.csv("./output/post2015data.csv")
@@ -66,11 +67,13 @@ set2a = read.csv("./output/post2015data.csv")
 #New system does not provide the total paid column, this section combines the two settlements paid from savings and risk amounts together
 set2 = dplyr::mutate(set2a, amount_paid = set2a$PAID.FROM.RISK.AMT + set2a$PAID.FROM.SAVINGS)
 
-#Select only specific columns needed
-df_new = sqldf("select 'OPTION NAME' as plan_code,'CLAIM NO' as clm_num,'MEMBER NO' as mem_num, 'INO' as ben_num,'DIS' as dis,'DATE RECEIVED' as date_received,'SERVICE DATE' as treatment_date,'ASSESS DATE' as assessment_date,'AMOUNT CLAIMED' as amount_claimed, 'amount_paid' from set2")
+#Select only specific columns needed and rename them
+df_new = select(set2,OPTION.NAME,CLAIM.NO,MEMBER.NO,INO,DIS,DATE.RECEIVED,SERVICE.DATE,ASSESS.DATE,AMOUNT.CLAIMED,amount_paid)
+
+df_new = df_new %>% rename( plan_code = OPTION.NAME,clm_num = CLAIM.NO,mem_num = MEMBER.NO,ben_num = INO, dis = DIS,received_date = DATE.RECEIVED,treatment_date = SERVICE.DATE,assess_date = ASSESS.DATE,amount_claimed = AMOUNT.CLAIMED)
 
 #Combined Data Set
-df_global = bind_rows(df_new, df_old)
+df_global = rbindlist(list(df_new, df_old),use.names = TRUE)
 write_csv(df_global, "./output/alldata.csv",append = FALSE, col_names = TRUE)
 
 #remove the old files
