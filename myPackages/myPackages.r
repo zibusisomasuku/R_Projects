@@ -5,3 +5,4 @@ my_packages <- c("tidyverse", "broom", "coefplot", "cowplot",
 	"survey", "srvyr", "viridis", "viridisLite", "devtools","readxl","readr","dplyr","plyr","tictoc")
 
 install.packages(my_packages)
+
