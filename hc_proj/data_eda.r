@@ -8,14 +8,16 @@ library(data.table)
 library(dplyr)
 library(tidyr)
 library(inspectdf)
-library(DataExplorer)
 
 #Set Working Directory on R Studio
 #You may need to consider other methods like the here() library for other IDEs
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
-plot_str(claims_data)
-plot_missing(claims_data)
-plot_histogram(claims_data)
-plot_density(claims_data)
-plot_bar(claims_data)
+show_plot(inspect_types(claims_data))
+show_plot(inspect_na(claims_data))
+show_plot(inspect_cat(claims_data))
+show_plot(inspect_imb(claims_data))
+show_plot(inspect_mem(claims_data))
+show_plot(inspect_num(claims_data))
+
+
