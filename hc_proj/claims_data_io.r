@@ -7,6 +7,7 @@ library(data.table)
 library(dplyr)
 library(tidyr)
 library(lubridate)
+library(stringr)
 
 #Set Working Directory on R Studio
 #You may need to consider other methods like the here() library for other IDEs
@@ -63,11 +64,11 @@ df2016 = select(df2016, mem_num, ben_num, plan_code, date_treated, date_received
 
 df2016$mem_num = as.factor(df2016$mem_num)
 df2016$ben_num = as.factor(df2016$ben_num)
-df2016$plan_code = as.factor(df2016$plan_code)
+df2016$plan_code = as.character(df2016$plan_code)
 df2016$date_treated = date(ymd(df2016$date_treated))
 df2016$date_received = date(ymd(df2016$date_received))
 df2016$date_assessed = date(ymd(df2016$date_assessed))
-df2016$dis = as.factor(df2016$dis)
+df2016$dis = as.character(df2016$dis)
 df2016$cl_chargeable_code = as.factor(df2016$cl_chargeable_code)
 df2016$cl_chargeable_des = as.factor(df2016$cl_chargeable_des)
 df2016$clm_num = as.factor(df2016$clm_num)
@@ -82,11 +83,11 @@ df2017 = select(df2017, mem_num, ben_num, plan_code, date_treated, date_received
 
 df2017$mem_num = as.factor(df2017$mem_num)
 df2017$ben_num = as.factor(df2017$ben_num)
-df2017$plan_code = as.factor(df2017$plan_code)
+df2017$plan_code = as.character(df2017$plan_code)
 df2017$date_treated = date(ymd(df2017$date_treated))
 df2017$date_received = date(ymd(df2017$date_received))
 df2017$date_assessed = date(ymd(df2017$date_assessed))
-df2017$dis = as.factor(df2017$dis)
+df2017$dis = as.character(df2017$dis)
 df2017$cl_chargeable_code = as.factor(df2017$cl_chargeable_code)
 df2017$cl_chargeable_des = as.factor(df2017$cl_chargeable_des)
 df2017$clm_num = as.factor(df2017$clm_num)
@@ -101,11 +102,11 @@ df2018 = select(df2018, mem_num, ben_num, plan_code, date_treated, date_received
 
 df2018$mem_num = as.factor(df2018$mem_num)
 df2018$ben_num = as.factor(df2018$ben_num)
-df2018$plan_code = as.factor(df2018$plan_code)
+df2018$plan_code = as.character(df2018$plan_code)
 df2018$date_treated = date(ymd(df2018$date_treated))
 df2018$date_received = date(ymd(df2018$date_received))
 df2018$date_assessed = date(ymd(df2018$date_assessed))
-df2018$dis = as.factor(df2018$dis)
+df2018$dis = as.character(df2018$dis)
 df2018$cl_chargeable_code = as.factor(df2018$cl_chargeable_code)
 df2018$cl_chargeable_des = as.factor(df2018$cl_chargeable_des)
 df2018$clm_num = as.factor(df2018$clm_num)
@@ -120,11 +121,11 @@ df2019 = select(df2019, mem_num, ben_num, plan_code, date_treated, date_received
 
 df2019$mem_num = as.factor(df2019$mem_num)
 df2019$ben_num = as.factor(df2019$ben_num)
-df2019$plan_code = as.factor(df2019$plan_code)
+df2019$plan_code = as.character(df2019$plan_code)
 df2019$date_treated = date(ymd(df2019$date_treated))
 df2019$date_received = date(ymd(df2019$date_received))
 df2019$date_assessed = date(ymd(df2019$date_assessed))
-df2019$dis = as.factor(df2019$dis)
+df2019$dis = as.character(df2019$dis)
 df2019$cl_chargeable_code = as.factor(df2019$cl_chargeable_code)
 df2019$cl_chargeable_des = as.factor(df2019$cl_chargeable_des)
 df2019$clm_num = as.factor(df2019$clm_num)
@@ -133,7 +134,7 @@ df2019$amount_claimed = as.numeric(as.character(df2019$amount_claimed))
 df2019$amount_paid = as.numeric(as.character(df2019$amount_paid))
 
 #Save the files
-save(data_2016, data_2017, data_2018, data_2019, file = "./output/claims_data_cleaned.RData")
+save(df2016, df2017, df2018, df2019, file = "./output/claims_data_cleaned.RData")
 
 #Clearing the workspace
 rm (list = ls())
@@ -143,11 +144,6 @@ rm (list = ls())
 
 #Load Cleaned and Refactored Claims Data
 load("./output/claims_data_cleaned.RData")
-df2016 = data_2016
-df2017 = data_2017
-df2018 = data_2018
-df2019 = data_2019
-rm(data_2016, data_2017, data_2018, data_2019)
 
 #*** Before running this section, make sure you have the file mem_data_import.r
 load("./output/membership.RData")
@@ -158,32 +154,34 @@ mem_att19 = select(mem_2019, mem_ben, dep_type, age, emp_type)
 rm(mem_2016, mem_2017, mem_2018, mem_2019)
 
 #Merging with Member attributes such as dependent type, age and payer
-library(stringr)
-df2016 = merge(mutate(df2016, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att16, by = "mem_num")
-df2017 = merge(mutate(df2017, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att17, by = "mem_num")
-df2018 = merge(mutate(df2018, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att18, by = "mem_num")
-df2019 = merge(mutate(df2019, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att19, by = "mem_num")
+df2016 = merge(mutate(df2016, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att16, by = "mem_ben")
+df2017 = merge(mutate(df2017, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att17, by = "mem_ben")
+df2018 = merge(mutate(df2018, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att18, by = "mem_ben")
+df2019 = merge(mutate(df2019, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att19, by = "mem_ben")
 
 #**********************************************************************************
 #Combine all the data
 dtlist = list(df2016, df2017, df2018, df2019)
 claims_data = rbindlist(dtlist, use.names = TRUE)
 claims_data = select(claims_data, mem_num, ben_num, plan_code, date_treated, date_received, date_assessed,dis,cl_chargeable_code,cl_chargeable_des, clm_num, line_num, amount_claimed,amount_paid, mem_ben, dep_type, age, emp_type)
-rm(mem_att16, mem_att17, mem_att18, mem_att19)
-View(head(claims_data))
 save(claims_data, file =  "./output/claims_with_mem_attrib.RData")
 
-#Load the previous data set
+#***********************************************************************************
+#Merge data with service types, option names
 rm(list = ls())
 
 #Load the just created data set
-load("./output/claims_data_cleaned.RData")
+load("./output/claims_with_mem_attrib.RData")
 
 #Import Discipline and Plan Codes
-df_dis = read.csv("./csv/discipline.csv")
+df_dis = read_xlsx("./csv/discipline.xlsx")
+df_dis$dis = as.character(df_dis$dis)
 df_plan = read.csv("./csv/plancodes.csv")
+df_plan$plan_code = as.character(df_plan$plan_code)
 
 #Merge claims data with displine codes and option names
-claims_data = merge(claims_data, df_dis, by = "dis")
-claims_data = merge(claims_data, df_plan, by = "plan_code")
+claims_data = merge(claims_data, df_dis, by = "dis", all.x = TRUE, all.y = FALSE, no.dups = FALSE)
+claims_data = merge(claims_data, df_plan, by = "plan_code", all.x = TRUE, all.y = FALSE, no.dups = FALSE)
+#claims_data = left_join(claims_data, df_dis, by = "dis")
+#claims_data = left_join(claims_data, df_plan, by = "plan_code")
 save(claims_data, file =  "./output/claims_data_final.RData")
