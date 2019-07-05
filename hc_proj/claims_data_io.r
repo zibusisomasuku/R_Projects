@@ -13,13 +13,7 @@ library(lubridate)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
 #******************************************************************************
-
-#Procedure (done individiually to optimize RAM usage)
-#1. Complile file lists that make the year
-#2. Create a list of data tables by file for that year
-#3. Combine the list of data tables into one data table
-#4. remove #NA rows (ones with totals and the likes)
-#5. Save the files
+#Data Imports
 
 #Year 2016
 files_2016 = list.files("./excel_claims/2016", full.names = TRUE, pattern =  "*.xlsx")
@@ -52,14 +46,7 @@ save(data_2016, data_2017, data_2018, data_2019, file = "./output/claims_data_ra
 rm (list = ls())
 
 #******************************************************************************
-
-#Procedure (done individiually to optimize RAM usage)
-#1. Load the rds file
-#2. Optional: Combine columns to come up with other columns
-#3. Rename columns
-#4. Select only the wanted columns in a particular order
-#5. Format specific columns as factors
-#6. Add member attributes fro membership data
+#Data Cleaning and Refactoring
 
 #Load Raw Claims Data
 load("./output/claims_data_raw.RData")
@@ -145,12 +132,46 @@ df2019$line_num = as.factor(df2019$line_num)
 df2019$amount_claimed = as.numeric(as.character(df2019$amount_claimed))
 df2019$amount_paid = as.numeric(as.character(df2019$amount_paid))
 
+#Save the files
+save(data_2016, data_2017, data_2018, data_2019, file = "./output/claims_data_cleaned.RData")
+
+#Clearing the workspace
+rm (list = ls())
+
+#******************************************************************************
+#Merging Claims Data with Member Attributes
+
+#Load Cleaned and Refactored Claims Data
+load("./output/claims_data_cleaned.RData")
+df2016 = data_2016
+df2017 = data_2017
+df2018 = data_2018
+df2019 = data_2019
+rm(data_2016, data_2017, data_2018, data_2019)
+
+#*** Before running this section, make sure you have the file mem_data_import.r
+load("./output/membership.RData")
+mem_att16 = select(mem_2016, mem_ben, dep_type, age, emp_type)
+mem_att17 = select(mem_2017, mem_ben, dep_type, age, emp_type)
+mem_att18 = select(mem_2018, mem_ben, dep_type, age, emp_type)
+mem_att19 = select(mem_2019, mem_ben, dep_type, age, emp_type)
+rm(mem_2016, mem_2017, mem_2018, mem_2019)
+
+#Merging with Member attributes such as dependent type, age and payer
+library(stringr)
+df2016 = merge(mutate(df2016, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att16, by = "mem_num")
+df2017 = merge(mutate(df2017, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att17, by = "mem_num")
+df2018 = merge(mutate(df2018, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att18, by = "mem_num")
+df2019 = merge(mutate(df2019, mem_ben = str_c(mem_num, ben_num, sep = "")), mem_att19, by = "mem_num")
+
+#**********************************************************************************
 #Combine all the data
 dtlist = list(df2016, df2017, df2018, df2019)
 claims_data = rbindlist(dtlist, use.names = TRUE)
-claims_data = select(claims_data, mem_num, ben_num, plan_code, date_treated, date_received, date_assessed,dis,cl_chargeable_code,cl_chargeable_des, clm_num, line_num, amount_claimed,amount_paid)
+claims_data = select(claims_data, mem_num, ben_num, plan_code, date_treated, date_received, date_assessed,dis,cl_chargeable_code,cl_chargeable_des, clm_num, line_num, amount_claimed,amount_paid, mem_ben, dep_type, age, emp_type)
+rm(mem_att16, mem_att17, mem_att18, mem_att19)
 View(head(claims_data))
-save(claims_data, file =  "./output/claims_data_cleaned.RData")
+save(claims_data, file =  "./output/claims_with_mem_attrib.RData")
 
 #Load the previous data set
 rm(list = ls())
@@ -165,5 +186,4 @@ df_plan = read.csv("./csv/plancodes.csv")
 #Merge claims data with displine codes and option names
 claims_data = merge(claims_data, df_dis, by = "dis")
 claims_data = merge(claims_data, df_plan, by = "plan_code")
-claims_data = select(claims_data, mem_num, ben_num, optname, date_treated, date_received, date_assessed, service_type,cl_chargeable_code,cl_chargeable_des, clm_num, line_num, amount_claimed,amount_paid)
-save(claims_data, file =  "./output/claims_data_cleaned_final.RData")
+save(claims_data, file =  "./output/claims_data_final.RData")

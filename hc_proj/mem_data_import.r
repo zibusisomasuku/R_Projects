@@ -5,7 +5,6 @@ rm (list = ls())
 library(readxl)
 library(data.table)
 library(dplyr)
-library(tidyr)
 
 #Set Working Directory on R Studio
 #You may need to consider other methods like the here() library for other IDEs
