@@ -8,3 +8,5 @@
 hc_proj/.RData
 *.rds
 *.RData
+*.xls
+*.xlsm
