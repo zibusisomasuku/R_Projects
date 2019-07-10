@@ -9,6 +9,8 @@ library(tidyr)
 library(lubridate)
 library(stringr)
 library(plyr)
+library(ggplot2)
+library(ChainLadder)
 
 #Set Working Directory on R Studio
 #You may need to consider other methods like the here() library for other IDEs
@@ -21,6 +23,7 @@ claims_data = claims_data %>%
 				select(mem_num, ben_num, date_treated, date_received, amount_paid, optname, service_type)
 claims_data = claims_data %>%
 				mutate(quarter_treated = str_c(year(date_treated),str_c("Q",quarter(date_treated), sep = ""), sep = " "))
+claims_data$quarter_treated = as.factor(claims_data$quarter_treated)
 claims_data = claims_data %>%
 				mutate(delay = (year(claims_data$date_received)*4 + quarter(claims_data$date_received))-(year(claims_data$date_treated)*4 + quarter(claims_data$date_treated)))
 
@@ -67,6 +70,10 @@ count = ddply(summary_claims,.(optname), summarise, total_count = length(amount_
 ggplot(data = count, aes(x = optname, y = total_count, fill = optname)) + 
   geom_bar(stat = 'identity', position = 'dodge') + labs( x = "Option Names", y = "Total Count", title = "Summary of Claims by Plan")
 
+
+triangle_data = claims_data[,c(8,9,5)]
+triangle = as.triangle(triangle_data, bycol = TRUE, origin = "quarter_treated", dev = "delay", value = "amount_paid")
+
 #******************************************************************************
 #Split data into Service Types
 
@@ -91,8 +98,9 @@ hc_bcl = function(my.data){
 for(i in 1:length(claim_splits)){
   hc_bcl(my.data = claim_splits[[i]])
 }
-resultimates.of.all.data.sets <- lapply(claim_splits, FUN = hc_bcl)
+reserve_results = lapply(claim_splits, FUN = hc_bcl)
 
 #Print BCL IBNR resultimates
-resultimates.of.all.data.sets
+reserve_results
+
 ### endofBCLcalcs
