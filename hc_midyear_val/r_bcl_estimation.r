@@ -3,95 +3,124 @@ rm(list = ls())
 
 #Load Libraries
 library(reshape)
-library(lubridate)
 library(tidyr)
 library(ChainLadder)
 library(plyr)
 library(data.table)
 library(data.table)
 library(readxl)
-library(janitor)
 library(ggplot2)
 library(dplyr)
-
+library(stringr)
+library(lubridate)
+library(janitor)
 
 #Set Working Directory on R Studio, **You may need to consider other methods like the here() library for other IDEs
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
-#Importing the dataset
-file_list = list.files("./Claims", pattern = "*.xlsx", full.names = TRUE, recursive =  TRUE)
-claims_list = lapply(file_list, read_xlsx)
-claims_data = do.call(rbind,claims_list) %>%
-              drop_na(ncol = 1)
-claims_data = clean_names(claims_data, case = "snake") %>%
-              mutate(amount_paid = paid_from_risk_amt + paid_from_savings)
-              mutate(treatment_month = str_c(year(service_date), month(service_date, label = TRUE, abbr = TRUE), sep = " "))
+#Importing Auxiliary Datasets
+df_optnames = read_xlsx("plancodes.xlsx")
+df_dis = read_xlsx("discipline.xlsx")
+
+#Importing the datasets
+#2018 Files
+files_2018 = list.files("./claims_18", pattern = "*.xlsx", full.names = TRUE)
+claims_18 = lapply(files_2018, read_xlsx)
+claims_data18 = do.call(rbind, claims_18)
+claims_data18 = drop_na(claims_data18, ncol = 1)
+claims_data18 = clean_names(claims_data18, case = "snake")
+claims_data18 = mutate(claims_data18, amount_paid = paid_from_risk_amt + paid_from_savings)
+claims_data18 = select(claims_data18, member_no, service_date, dis, date_received, amount_paid, option_name)
+claims_data18$date_received = ymd(claims_data18$date_received)
+
+#2019 Files
+files_2019 = list.files("./claims_19", pattern = "*.xlsx", full.names = TRUE)
+claims_19 = lapply(files_2019, read_xlsx, skip = 4)
+claims_19n = ldply(claims_19, dplyr::select, c("MEMBER", "TREATMENT DATE", "DISCIPLINE", "DATE RECEIVED", "AMOUNT", "PRODUCT"))
+claims_data19 = drop_na(claims_19n, ncol = 1)
+claims_data19 = clean_names(claims_data19, case = "snake")
+names(claims_data19)[1:6] = c("member_no", "service_date", "dis", "date_received", "amount_paid", "option_name")
+claims_data19$date_received = date(ymd_hms(claims_data19$date_received))
+
+#Merge the two datasets
+claims_data = rbind(claims_data18, claims_data19)
+claims_data$service_date = ymd(claims_data$service_date)
+claims_data$date_received = ymd(claims_data$date_received)
+
+#Data Wrangling
+claims_data = mutate(claims_data,
+                                treatment_month = str_c(year(service_date), lubridate::month(service_date, label = TRUE), sep = " "))
+claims_data = mutate(claims_data, dev = (
+  year(date_received)*12 + month(date_received) - (
+  year(service_date)*12 + month(service_date))
+  )
+)
+
+claims_data = merge(claims_data, df_dis, by.x = "dis", by.y = "dis", all.x = TRUE, all.y =  FALSE)
+claims_data = merge(claims_data, df_optnames, by.x = "option_name", by.y = "option_name", all.x = TRUE, all.y =  FALSE)
+
+columns_needed = c("treatment_month", "dev", "amount_paid")
+
+#Data Splits
+claims_splits = split(claims_data, claims_data$service_type)
+column_vector = match(columns_needed, colnames(claims_data))
 
 
-xl_file <- "FMHCClaims.xlsx"
-wb <- loadWorkbook(xl_file)
-sheets <- openxlsx::getSheetNames(xl_file) #check that all sheets have loaded
 
-df <- read.xlsx("FMHCClaims.xlsx", 1)
 
-for (x in 2:10) {
-  df <- rbind(df, read.xlsx("FMHCClaims.xlsx", sheet=sheets[x]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#First select the data set
+#Select columns needed
+# create dev triangles
+
+#Calculate IBNR Using BCL
+bcl_estimate = function(my_data){
+  loss_run_data = dplyr::select(my_data, column_vector)
+  merged_triangle = as.triangle(loss_run_data, 
+                              dev = "dev", 
+                              origin = "treatment_month", 
+                              value = "amount_paid")
+  plot(merged_triangle, 
+     main = "Paid Losses vs Maturity by Accident Year",
+     xlab = "Development in Months", 
+     ylab = "Paid Losses")
+  merged_triangle[is.na(merged_triangle)] = 0
+  cum_triangle = incr2cum(triangle)
+
+
+
 }
-#### data frame loaded!
 
-## Make some data sumaries!
-summarydf<- df %>%
-  select(OPTION.NAME, MAJOR.GROUP, Total.Paid) %>%
-group_by(OPTION.NAME, MAJOR.GROUP)
-## Create Overall Summary of Claims data by Plan
-summarybyplan<-ddply(summarydf,.( Final.Product), summarise, TotalPaid = sum(Total.Paid), TotalCounts= length(Total.Paid))
-TotalPaidClaim<-sum(summarybyplan$TotalPaid, na.rm=TRUE)
-TotalPaidCount<-sum(summarybyplan$TotalCounts, na.rm=TRUE)
-summarybyplan$TotalPaid[is.na(summarybyplan$TotalPaid)]<-0
-summarybyplan$TotalCounts[is.na(summarybyplan$TotalCounts)]<-0
-summarybyplan<-cbind(summarybyplan, PercentageAmount=c((summarybyplan$TotalPaid/TotalPaidClaim)*100), PercentageCount=c((summarybyplan$TotalCounts/TotalPaidCount)*100))
-summarybyplan$PercentageAmount<-as.numeric(round(summarybyplan$PercentageAmount,2))
-summarybyplan$PercentageCount<-as.numeric(round(summarybyplan$PercentageCount,2))
-print(summarybyplan)
-
-##Create sumary of claims data by service type (major group)
-
-summarybyservice<-ddply(summarydf,.( MAJOR.GROUP), summarise, TotalPaid = sum(Total.Paid), TotalCounts= length(Total.Paid))
-TotalPaidClaim<-sum(summarybyservice$TotalPaid)
-TotalPaidCount<-sum(summarybyservice$TotalCounts)
-summarybyservice<-cbind(summarybyservice, PercentageAmount=c((summarybyservice$TotalPaid/TotalPaidClaim)*100), PercentageCount=c((summarybyservice$TotalCounts/TotalPaidCount)*100))
-summarybyservice$PercentageAmount<-as.numeric(round(summarybyservice$PercentageAmount,2))
-summarybyservice$PercentageCount<-as.numeric(round(summarybyservice$PercentageCount,2))
-print(summarybyservice)
-
-##summary of total claims data by month
-monthlysummarydata<- df %>%
-  select(OPTION.NAME, Treatment.Month, Total.Paid, MAJOR.GROUP) %>%
-  group_by(Final.Product, MAJOR.GROUP, Treatment.Month)
-summarybymonth<-ddply(monthlysummarydata,.( Treatment.Month), summarise, TotalPaid = sum(Total.Paid), TotalCounts= length(Total.Paid))
-summarybymonth<-cbind(summarybymonth, PercentageAmount=c((summarybymonth$TotalPaid/TotalPaidClaim)*100), PercentageCount=c((summarybymonth$TotalCounts/TotalPaidCount)*100))
-summarybymonth$PercentageAmount<-as.numeric(round(summarybymonth$PercentageAmount,2))
-summarybymonth$PercentageCount<-as.numeric(round(summarybymonth$PercentageCount,2))
-print(summarybymonth)
-
-with(sum,pie(sum$Percentage, labels=paste0(as.character(Final.Product), " ", sum$Percentage, "%"), radius=1))
-
-###PLOTS###
-###plot of paid claims paid by plan
-ggplot(data = sum, aes(x = Final.Product, y = Total, fill = Final.Product)) + 
-     geom_bar(stat = 'identity', position = 'dodge')
-##summary of claim counts by plan
-count<-ddply(summarydf,.( Final.Product), summarise, Total.Counts = length(Total.Paid)) 
-ggplot(data = count, aes(x = Final.Product, y = Total.Counts, fill = Final.Product)) + 
-  geom_bar(stat = 'identity', position = 'dodge')
-
-### split data into practice types
-listofdata<-split(df, df$MAJOR.GROUP)
 ### calculate IBNR using BCL
 my.function=function(my.data){
   
-  triangulationdata=my.data[,c(8,12,14)]
-  triangle<-as.triangle(triangulationdata, origin="Treatment.Month", dev="Reporting.Lag", value="Total.Paid")
+  triangulationdata = my.data[,match(columns_needed, colnames(claims_data))]
+  triangle<-as.triangle(triangulationdata, origin="treatment_month", dev="dev", value="amount_paid")
   cum.triangle=incr2cum(triangle, na.rm=TRUE)
   cum.triangle=cum.triangle[,apply(!is.na(cum.triangle),2,any)] 
   Fulltriangle<- predict(chainladder(cum.triangle))
