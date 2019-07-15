@@ -61,54 +61,27 @@ claims_splits = split(final_data, claims_data$service_type)
 
 #Calculate IBNR Using BCL
 cl_function = function(my_data){
-  inc_tri = as.triangle(my_data, 
+  tri_data = select(my_data, dev, treatment_month, amount_paid)
+  inc_tri = as.triangle(tri_data, 
                               dev = "dev", 
                               origin = "treatment_month", 
                               value = "amount_paid")
   cum_tri = incr2cum(inc_tri)
-  plot(cum_tri,
+  print(
+    plot(cum_tri,
      main = "Paid Losses vs Development by Accident Month",
      xlab = "Maturity in Months", 
      ylab = "Paid Losses",
      lattice = TRUE)
+  )
   cl_estimate = chainladder(cum_tri) #Determine the CL estimates.
-  full_tri = predict(cl_estimate)
-  ult_val = c(full_tri[,ncol(full_tri)])
-  current_ev = getLatestCumulative(cum_tri, na.values = NULL)
-  ibnr = ult_val - current_ev
-  atu_factor = ult_val/current_ev
-  ibnr_calc = data.frame(current_ev, atu_factor, ult_val, ibnr)
-  ibnr_calc = rbind(ibnr_calc, data.frame(
-                      current_ev = sum(current_ev),
-                      atu_factor = NA,
-                      ult_val = sum(ult_val),
-                      ibnr =sum(ibnr),
-                      row.names = "Total"))
   mack_est = MackChainLadder(cum_tri, est.sigma = "Mack")
-  summary(mack_est)
-  plot(mack_est, lattice = TRUE)
   CDR(mack_est)
 }
+for(i in 1:length(claims_splits)){
+  cl_function(my_data = claims_splits[[i]])
+}
 
-all_results = lapply(claims_splits, FUN = cl_function)
+#all_results = lapply(claims_splits, FUN = cl_function)
 
-all_results
-
-
-mergedTriangle = as.triangle(final_data, 
-                              dev = "dev", 
-                              origin = "treatment_month", 
-                              value = "amount_paid")
-mergedTriangle2 <- incr2cum(mergedTriangle)
-plot(mergedTriangle2, 
-     main = "Paid Losses vs Maturity by Accident Year",
-     xlab = "Maturity in Months", 
-     ylab = "Paid Losses")
-CL<-chainladder(mergedTriangle2) #Determine the CL estimates.
-predict(CL) #Should display the completed triangle
-mack<-MackChainLadder(mergedTriangle2, est.sigma = "Mack")
-summary(mack) 
-plot(mergedTriangle2, lattice=TRUE)
-plot(mack, lattice=TRUE)
-plot(mack)
-CDR(mack)
+#all_results
