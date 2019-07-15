@@ -2,16 +2,12 @@
 rm(list = ls())
 
 #Load Libraries
-library(reshape)
 library(tidyr)
 library(ChainLadder)
 library(plyr)
 library(data.table)
-library(data.table)
 library(readxl)
-library(ggplot2)
 library(dplyr)
-library(stringr)
 library(lubridate)
 library(janitor)
 
@@ -49,95 +45,70 @@ claims_data$date_received = ymd(claims_data$date_received)
 
 #Data Wrangling
 claims_data = mutate(claims_data,
-                                treatment_month = str_c(year(service_date), lubridate::month(service_date, label = TRUE), sep = " "))
+  treatment_month = format(as.Date(service_date), "%Y-%m"))
 claims_data = mutate(claims_data, dev = (
   year(date_received)*12 + month(date_received) - (
   year(service_date)*12 + month(service_date))
   )
 )
-
+claims_data = filter(claims_data, service_date > ymd("2018-06-30")) #filter for claims after 30 June 2018
 claims_data = merge(claims_data, df_dis, by.x = "dis", by.y = "dis", all.x = TRUE, all.y =  FALSE)
 claims_data = merge(claims_data, df_optnames, by.x = "option_name", by.y = "option_name", all.x = TRUE, all.y =  FALSE)
+final_data = select(claims_data, treatment_month, dev, amount_paid, optname)
 
-columns_needed = c("treatment_month", "dev", "amount_paid")
-
-#Data Splits
-claims_splits = split(claims_data, claims_data$service_type)
-column_vector = match(columns_needed, colnames(claims_data))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#First select the data set
-#Select columns needed
-# create dev triangles
+#Split the data by service types
+claims_splits = split(final_data, claims_data$service_type)
 
 #Calculate IBNR Using BCL
-bcl_estimate = function(my_data){
-  loss_run_data = dplyr::select(my_data, column_vector)
-  merged_triangle = as.triangle(loss_run_data, 
+cl_function = function(my_data){
+  inc_tri = as.triangle(my_data, 
                               dev = "dev", 
                               origin = "treatment_month", 
                               value = "amount_paid")
-  plot(merged_triangle, 
+  cum_tri = incr2cum(inc_tri)
+  plot(cum_tri,
+     main = "Paid Losses vs Development by Accident Month",
+     xlab = "Maturity in Months", 
+     ylab = "Paid Losses",
+     lattice = TRUE)
+  cl_estimate = chainladder(cum_tri) #Determine the CL estimates.
+  full_tri = predict(cl_estimate)
+  ult_val = c(full_tri[,ncol(full_tri)])
+  current_ev = getLatestCumulative(cum_tri, na.values = NULL)
+  ibnr = ult_val - current_ev
+  atu_factor = ult_val/current_ev
+  ibnr_calc = data.frame(current_ev, atu_factor, ult_val, ibnr)
+  ibnr_calc = rbind(ibnr_calc, data.frame(
+                      current_ev = sum(current_ev),
+                      atu_factor = NA,
+                      ult_val = sum(ult_val),
+                      ibnr =sum(ibnr),
+                      row.names = "Total"))
+  mack_est = MackChainLadder(cum_tri, est.sigma = "Mack")
+  summary(mack_est)
+  plot(mack_est, lattice = TRUE)
+  CDR(mack_est)
+}
+
+all_results = lapply(claims_splits, FUN = cl_function)
+
+all_results
+
+
+mergedTriangle = as.triangle(final_data, 
+                              dev = "dev", 
+                              origin = "treatment_month", 
+                              value = "amount_paid")
+mergedTriangle2 <- incr2cum(mergedTriangle)
+plot(mergedTriangle2, 
      main = "Paid Losses vs Maturity by Accident Year",
-     xlab = "Development in Months", 
+     xlab = "Maturity in Months", 
      ylab = "Paid Losses")
-  merged_triangle[is.na(merged_triangle)] = 0
-  cum_triangle = incr2cum(triangle)
-
-
-
-}
-
-### calculate IBNR using BCL
-my.function=function(my.data){
-  
-  triangulationdata = my.data[,match(columns_needed, colnames(claims_data))]
-  triangle<-as.triangle(triangulationdata, origin="treatment_month", dev="dev", value="amount_paid")
-  cum.triangle=incr2cum(triangle, na.rm=TRUE)
-  cum.triangle=cum.triangle[,apply(!is.na(cum.triangle),2,any)] 
-  Fulltriangle<- predict(chainladder(cum.triangle))
-  Ult<-c(Fulltriangle[,ncol(Fulltriangle)])
-  CurrentEv<-getLatestCumulative(cum.triangle, na.values=NULL)
-  IBNR=Ult-CurrentEv
-  ATU=Ult/CurrentEv
-  IBNRExhibit<-data.frame(CurrentEv, ATU, Ult, IBNR)
-  IBNRExhibit<-rbind(IBNRExhibit,
-                     data.frame(CurrentEv=sum(CurrentEv), ATU=NA, Ult=sum(Ult), IBNR=sum(IBNR),row.names="Total"))
-  
-  
-}
-for(i in 1:length(listofdata)){
-  my.function(my.data=listofdata[[i]])
-}
-results.of.all.data.sets <- lapply(listofdata, FUN=my.function)
-##print BCL IBNR results
-results.of.all.data.sets
-### endofBCLcalcs
+CL<-chainladder(mergedTriangle2) #Determine the CL estimates.
+predict(CL) #Should display the completed triangle
+mack<-MackChainLadder(mergedTriangle2, est.sigma = "Mack")
+summary(mack) 
+plot(mergedTriangle2, lattice=TRUE)
+plot(mack, lattice=TRUE)
+plot(mack)
+CDR(mack)
