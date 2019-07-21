@@ -11,6 +11,7 @@ library(dplyr)
 library(lubridate)
 library(janitor)
 library(reshape2)
+library(erer)
 
 #Set Working Directory on R Studio, **You may need to consider other methods like the here() library for other IDEs
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -52,7 +53,13 @@ summaries = list(
 	summary_by_optname,
 	summary_by_month,
 	summary_by_service_option)
-save(summaries, file = "./output/zwl_claim_summaries.RData")
+
+write.list(summaries, file = "./output/zwl_claim_summaries.RData", t.names = c(
+	"Summary by Service Type",
+	"Summary by Option",
+	"Summary by Treatment Month",
+	"Summary by Service Type and Option")
+)
 summaries
 
 #******************************************************************************
@@ -92,5 +99,11 @@ summaries = list(
 	summary_by_optname,
 	summary_by_month,
 	summary_by_service_option)
-save(summaries, file = "./output/usd_claim_summaries.RData")
+
+write.list(summaries, file = "./output/zwl_claim_summaries.RData", t.names = c(
+	"Summary by Service Type",
+	"Summary by Option",
+	"Summary by Treatment Month",
+	"Summary by Service Type and Option")
+)
 summaries
