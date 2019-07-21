@@ -10,6 +10,7 @@ library(readxl)
 library(dplyr)
 library(lubridate)
 library(janitor)
+library(erer)
 
 #Set Working Directory on R Studio, **You may need to consider other methods like the here() library for other IDEs
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -47,7 +48,7 @@ cl_function = function(my_data){
 }
 
 all_results = lapply(claims_splits, FUN = cl_function)
-save(all_results, file = "./output/zwl_results.RData")
+write.list(all_results, file = "./output/zwl_results.csv", t.name = names(all_results))
 all_results
 
 #******************************************************************************
@@ -82,7 +83,6 @@ cl_function = function(my_data){
 }
 
 usd_results = lapply(claims_splits, FUN = cl_function)
-save(usd_results, file = "./output/usd_results.RData")
-usd_results
+write.list(usd_results, file = "./output/usd_results.csv", t.name = names(usd_results))
 
 print("Calculations are done!")
