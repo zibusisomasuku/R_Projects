@@ -1,12 +1,12 @@
-
 *.xlsx
 *.csv
 *.iml
 *.xml
 *.RHistory
 *.here
-hc_proj/.RData
+*.RData
 *.rds
 *.RData
 *.xls
 *.xlsm
+*.pdf

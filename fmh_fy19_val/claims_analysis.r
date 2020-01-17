@@ -3,7 +3,6 @@ rm(list = ls())
 
 #Load Libraries
 library(tidyr)
-library(ChainLadder)
 library(plyr)
 library(data.table)
 library(readxl)
@@ -23,8 +22,8 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 #Load the dataset
 load("./output/zwl_claims.RData")
 
-lv_date = ymd("2018-06-30")
-final_data = claims_data %>%
+lv_date = ymd("2018-12-31") #Last Valuation Date, Set 12 months prior the Valuation Date
+final_data = zwl_claims %>%
 	filter(date_received > lv_date)
 
 #Service Type
@@ -38,8 +37,9 @@ optname_summary_count = dcast(final_data, optname ~ ., length, value.var = "amou
 summary_by_optname = merge(optname_summary_amount, optname_summary_count, by = "optname", all = TRUE)
 
 #Treatment Month
-final_data_fl = claims_data %>%
+final_data_fl = zwl_claims %>%
 	filter(service_date > lv_date)
+
 month_summary_amount = dcast(final_data_fl, treatment_month ~ ., sum, value.var = "amount_paid")
 month_summary_count = dcast(final_data_fl, treatment_month ~ ., length, value.var = "amount_paid")
 summary_by_month = merge(month_summary_amount, month_summary_count, by = "treatment_month", all = TRUE)
@@ -54,23 +54,22 @@ summaries = list(
 	summary_by_month,
 	summary_by_service_option)
 
-write.list(summaries, file = "./output/zwl_claim_summaries.csv", t.names = c(
+write.list(summaries, file = "./output/zwl_claim_summaries.csv", t.name = c(
 	"Summary by Service Type",
 	"Summary by Option",
 	"Summary by Treatment Month",
 	"Summary by Service Type and Option")
 )
 summaries
-
+rm(summary_service, summary_by_optname, summary_by_month, summary_by_service_option)
+rm(summaries)
 #******************************************************************************
 #USD PLANS
 #******************************************************************************
-
 #Load the dataset
 load("./output/usd_claims.RData")
 
-lv_date = ymd("2018-06-30")
-final_data = au_data %>%
+final_data = gold_claims %>%
 	filter(date_received > lv_date)
 
 #Service Type
@@ -79,31 +78,31 @@ service_type_summary_count = dcast(final_data, service_type ~ ., length, value.v
 summary_service = merge(service_type_summary_amount, service_type_summary_count, by = "service_type", all = TRUE)
 
 #Options
-optname_summary_amount = dcast(final_data, option_name ~ ., sum, value.var = "amount_paid")
-optname_summary_count = dcast(final_data, option_name ~ ., length, value.var = "amount_paid")
-summary_by_optname = merge(optname_summary_amount, optname_summary_count, by = "option_name", all = TRUE)
+optname_summary_amount = dcast(final_data, optname ~ ., sum, value.var = "amount_paid")
+optname_summary_count = dcast(final_data, optname ~ ., length, value.var = "amount_paid")
+summary_by_optname = merge(optname_summary_amount, optname_summary_count, by = "optname", all = TRUE)
 
 #Treatment Month
-final_data_fl = au_data %>%
+final_data_fl = gold_claims %>%
 	filter(service_date > lv_date)
 month_summary_amount = dcast(final_data_fl, treatment_month ~ ., sum, value.var = "amount_paid")
 month_summary_count = dcast(final_data_fl, treatment_month ~ ., length, value.var = "amount_paid")
 summary_by_month = merge(month_summary_amount, month_summary_count, by = "treatment_month", all = TRUE)
 
 #Service Type by Plan
-summary_by_service_option = dcast(final_data, service_type ~ option_name, sum, value.var = "amount_paid")
+summary_by_service_option = dcast(final_data, service_type ~ optname, sum, value.var = "amount_paid")
 
 #Save
-summaries = list(
+summaries_au = list(
 	summary_service,
 	summary_by_optname,
 	summary_by_month,
 	summary_by_service_option)
 
-write.list(summaries, file = "./output/usd_claim_summaries.csv", t.names = c(
+write.list(summaries_au, file = "./output/usd_claim_summaries.csv", t.name = c(
 	"Summary by Service Type",
 	"Summary by Option",
 	"Summary by Treatment Month",
 	"Summary by Service Type and Option")
 )
-summaries
+summaries_au
