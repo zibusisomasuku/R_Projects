@@ -94,12 +94,10 @@ assign(deparse(substitute(my_data)),claims, envir = .GlobalEnv)
 
 #Data Wrangling using custom function
 wrangleData(gold_claims)
-write.csv(gold_claims,"gold_claims1.csv")
+#write.csv(gold_claims,"gold_claims1.csv")
 
 #Factoring in the Exchange Rates
-gold_claims$assessment_date = date(gold_claims$assessment_date)
-
-gold_claims = merge(gold_claims, select(df_rates, date, fml_rate), by.x = "assessment_date", by.y = "date", all.x = TRUE, all.y = FALSE)
+gold_claims = merge(gold_claims, dplyr::select(df_rates, date, fml_rate), by.x = "service_date", by.y = "date", all.x = TRUE, all.y = FALSE)
 
 gold_claims$fml_rate = as.numeric(gold_claims$fml_rate)
 
