@@ -1,7 +1,5 @@
 *.xlsx
 *.csv
-*.iml
-*.xml
 *.RHistory
 *.here
 *.RData
